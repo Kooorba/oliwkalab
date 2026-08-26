@@ -1,0 +1,259 @@
+
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OliwkaLab</title>
+<style>
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+body { font-family: -apple-system, Segoe UI, Roboto, Arial, sans-serif; background: linear-gradient(180deg, #FFE8B5, #FFD6E8); margin: 0; padding: 0; color: #3A2E5C; min-height: 100vh; }
+header { background: linear-gradient(135deg, #FF9E7D, #B36BFF); color: white; padding: 16px; text-align: center; box-shadow: 0 3px 12px rgba(0,0,0,0.15); }
+header h1 { margin: 0; font-size: 24px; }
+.container { max-width: 640px; margin: 0 auto; padding: 16px; }
+.card { background: white; border-radius: 20px; padding: 24px; margin-bottom: 16px; box-shadow: 0 4px 14px rgba(0,0,0,0.1); }
+.fade-in { animation: fadeIn 0.3s ease; }
+@keyframes fadeIn { from { opacity: 0; transform: scale(0.97); } to { opacity: 1; transform: scale(1); } }
+input[type=text] { width: 100%; padding: 14px; border-radius: 14px; border: 2px solid #FFD6E8; font-size: 17px; margin-bottom: 12px; text-align: center; }
+input[type=text]:focus { outline: none; border-color: #B36BFF; }
+button.big { background: linear-gradient(135deg, #FF9E7D, #B36BFF); color: white; border: none; border-radius: 16px; padding: 16px 24px; font-size: 17px; font-weight: 700; cursor: pointer; width: 100%; box-shadow: 0 4px 0 #9548d6; transition: transform 0.1s; }
+button.big:active { transform: translateY(3px); box-shadow: 0 1px 0 #9548d6; }
+button.ghost { background: white; color: #B36BFF; border: 2px solid #B36BFF; box-shadow: none; }
+.avatar-box { text-align: center; font-size: 90px; margin: 10px 0; }
+.crystals-badge { display: inline-flex; align-items: center; gap: 6px; background: #FFF3D6; color: #C9820B; padding: 8px 16px; border-radius: 20px; font-weight: 700; font-size: 15px; }
+.subject-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.subject-btn { background: white; border: 3px solid #FFD6E8; border-radius: 18px; padding: 20px 10px; text-align: center; cursor: pointer; font-weight: 700; color: #3A2E5C; transition: transform 0.15s, border-color 0.15s; }
+.subject-btn:hover { transform: translateY(-3px); border-color: #B36BFF; }
+.subject-btn.disabled { opacity: 0.4; cursor: not-allowed; }
+.subject-btn.disabled:hover { transform: none; }
+.subject-icon { font-size: 40px; display: block; margin-bottom: 8px; }
+.topic-btn { display: block; width: 100%; background: #FFF6EE; border: 2px solid #FFD6E8; border-radius: 14px; padding: 16px; margin-bottom: 10px; text-align: left; cursor: pointer; font-size: 15px; font-weight: 600; color: #3A2E5C; }
+.topic-btn:hover { border-color: #B36BFF; }
+.back-link { background: none; border: none; color: #B36BFF; font-weight: 700; font-size: 15px; cursor: pointer; margin-bottom: 12px; padding: 0; }
+.sentence-box { font-size: 20px; text-align: center; margin: 20px 0; line-height: 1.6; }
+.hint-box { background: #E8F7EE; border-radius: 12px; padding: 12px; font-size: 13px; color: #2E7D4F; margin-top: 10px; }
+.feedback { text-align: center; font-weight: 700; font-size: 18px; margin: 14px 0; }
+.feedback.ok { color: #2E7D4F; }
+.feedback.bad { color: #D6336C; }
+.progress-dots { display: flex; justify-content: center; gap: 6px; margin-bottom: 16px; }
+.dot { width: 10px; height: 10px; border-radius: 50%; background: #FFD6E8; }
+.dot.filled { background: #B36BFF; }
+.result-emoji { font-size: 60px; text-align: center; margin: 10px 0; }
+@media (max-width: 480px) {
+ .subject-grid { grid-template-columns: 1fr; }
+ header h1 { font-size: 19px; }
+}
+</style>
+</head>
+<body>
+<header><h1>✨ OliwkaLab ✨</h1></header>
+<div class="container" id="app"></div>
+
+<script>
+var NAME_KEY = "oliwkalab_name";
+var CRYSTALS_KEY = "oliwkalab_crystals";
+var PROGRESS_KEY = "oliwkalab_progress";
+
+var RZ_ZASADY = [
+{"id":1,"sentence":"Przed oknem rośnie duże d___ewo.","answer":"rz","hint":"drzewo - drzewa (rz po spółgłosce d)"},
+{"id":2,"sentence":"Na stole leży pusty tale___.","answer":"rz","hint":"talerz - talerzyk (rz wymienia się na r)"},
+{"id":3,"sentence":"W ogrodzie kwitną piękne ró___e.","answer":"ż","hint":"róża - wyjątek do zapamiętania"},
+{"id":4,"sentence":"Nad brzegiem ___eki siedzi wędkarz.","answer":"rz","hint":"rzeka - rzeczka (rz zostaje w rodzinie wyrazów)"},
+{"id":5,"sentence":"Wa___ka lata nad jeziorem.","answer":"ż","hint":"ważka - waga (ż wymienia się na g)"},
+{"id":6,"sentence":"Je___ zwinął się w kłębek pod krzakiem.","answer":"ż","hint":"jeż - jeże, wyjątek do zapamiętania"},
+{"id":7,"sentence":"Dziewczynka w___uciła piłkę do kosza.","answer":"rz","hint":"wrzucić - wrzucać (rz po spółgłosce w)"},
+{"id":8,"sentence":"W lesie rośnie du___o grzybów.","answer":"ż","hint":"dużo - duża (ż zostaje w rodzinie wyrazów)"},
+{"id":9,"sentence":"Górnik pracuje w kopalni pod z___emią.","answer":"i","hint":"ziemia - ziemniak (kontrolne, nie rz/ż)"},
+{"id":10,"sentence":"Na polu pasą się cztery k___owy.","answer":"r","hint":"krowy - krowa (kontrolne, nie rz/ż)"}
+];
+
+function getName() { return localStorage.getItem(NAME_KEY) || ""; }
+function setName(n) { localStorage.setItem(NAME_KEY, n); }
+function getCrystals() { return parseInt(localStorage.getItem(CRYSTALS_KEY) || "0", 10); }
+function addCrystals(n) { localStorage.setItem(CRYSTALS_KEY, String(getCrystals() + n)); }
+
+function getAvatarStage() {
+ var c = getCrystals();
+ if (c >= 100) return "🦸";
+ if (c >= 50) return "🧙";
+ if (c >= 20) return "🥷";
+ return "🧒";
+}
+
+var app = document.getElementById("app");
+function render(view) {
+ app.classList.remove("fade-in");
+ app.innerHTML = "";
+ view();
+ void app.offsetWidth;
+ app.classList.add("fade-in");
+}
+
+function crystalsBadge() {
+ return '<div class="crystals-badge">💎 ' + getCrystals() + ' Iskier Wiedzy</div>';
+}
+
+function renderWelcome() {
+ var card = document.createElement("div");
+ card.className = "card";
+ card.innerHTML =
+ '<div class="avatar-box">🧒</div>' +
+ '<h2 style="text-align:center;">Witaj, Odkrywco!</h2>' +
+ '<p style="text-align:center;color:#666;">Jak masz na imię?</p>' +
+ '<input type="text" id="nameInput" placeholder="Wpisz swoje imię">' +
+ '<button class="big" id="startBtn">Zaczynamy przygodę!</button>';
+ app.appendChild(card);
+ document.getElementById("startBtn").onclick = function() {
+ var val = document.getElementById("nameInput").value.trim();
+ if (!val) { return; }
+ setName(val);
+ render(renderHome);
+ };
+}
+
+function renderHome() {
+ var name = getName();
+ var card = document.createElement("div");
+ card.className = "card";
+ card.innerHTML =
+ '<div style="text-align:center;">' + crystalsBadge() + '</div>' +
+ '<div class="avatar-box">' + getAvatarStage() + '</div>' +
+ '<h2 style="text-align:center;">Cześć, ' + name + '!</h2>' +
+ '<p style="text-align:center;color:#666;">Wybierz przedmiot i rusz na quest!</p>';
+ app.appendChild(card);
+
+ var subjCard = document.createElement("div");
+ subjCard.className = "card";
+ subjCard.innerHTML = '<div class="subject-grid" id="subjectGrid"></div>';
+ app.appendChild(subjCard);
+
+ var grid = document.getElementById("subjectGrid");
+ var subjects = [
+ { name: "Polski", icon: "📖", active: true },
+ { name: "Matematyka", icon: "🔢", active: false },
+ { name: "Angielski", icon: "🌍", active: false },
+ { name: "Przyroda", icon: "🌱", active: false }
+ ];
+ subjects.forEach(function(s) {
+ var b = document.createElement("div");
+ b.className = "subject-btn" + (s.active ? "" : " disabled");
+ b.innerHTML = '<span class="subject-icon">' + s.icon + '</span>' + s.name + (s.active ? "" : "<br><small>(wkrótce)</small>");
+ if (s.active) { b.onclick = function() { render(renderPolski); }; }
+ grid.appendChild(b);
+ });
+}
+
+function renderPolski() {
+ var back = document.createElement("button");
+ back.className = "back-link";
+ back.textContent = "← Powrót";
+ back.onclick = function() { render(renderHome); };
+ app.appendChild(back);
+
+ var card = document.createElement("div");
+ card.className = "card";
+ card.innerHTML = '<h2>📖 Język polski</h2><p style="color:#666;">Wybierz zadanie:</p>';
+ app.appendChild(card);
+
+ var listCard = document.createElement("div");
+ listCard.className = "card";
+ var topics = [
+ { name: "🔤 Zasady pisowni: rz czy ż", action: function() { render(function() { startRzZExercise(); }); } },
+ { name: "📌 Aktualny temat (wkrótce)", action: null },
+ { name: "🎤 Dyktando (wkrótce)", action: null },
+ { name: "📚 Lektury (wkrótce)", action: null }
+ ];
+ topics.forEach(function(t) {
+ var b = document.createElement("button");
+ b.className = "topic-btn";
+ b.textContent = t.name;
+ if (t.action) { b.onclick = t.action; }
+ else { b.style.opacity = "0.5"; b.style.cursor = "not-allowed"; }
+ listCard.appendChild(b);
+ });
+ app.appendChild(listCard);
+}
+
+function startRzZExercise() {
+ var queue = RZ_ZASADY.slice();
+ var idx = 0;
+ var correctCount = 0;
+
+ function draw() {
+ app.innerHTML = "";
+ var back = document.createElement("button");
+ back.className = "back-link";
+ back.textContent = "← Przerwij i wróć";
+ back.onclick = function() { render(renderPolski); };
+ app.appendChild(back);
+
+ if (idx >= queue.length) {
+ var earned = correctCount * 5;
+ addCrystals(earned);
+ var doneCard = document.createElement("div");
+ doneCard.className = "card";
+ doneCard.innerHTML =
+ '<div class="result-emoji">' + (correctCount >= 8 ? "🏆" : correctCount >= 5 ? "🎉" : "💪") + '</div>' +
+ '<h2 style="text-align:center;">Quest ukończony!</h2>' +
+ '<p style="text-align:center;">Poprawne odpowiedzi: ' + correctCount + ' / ' + queue.length + '</p>' +
+ '<p style="text-align:center;font-weight:700;color:#C9820B;">Zdobyto ' + earned + ' Iskier Wiedzy! 💎</p>' +
+ '<button class="big" id="finishBtn">Powrót do menu</button>';
+ app.appendChild(doneCard);
+ document.getElementById("finishBtn").onclick = function() { render(renderPolski); };
+ return;
+ }
+
+ var dotsCard = document.createElement("div");
+ dotsCard.className = "progress-dots";
+ for (var i = 0; i < queue.length; i++) {
+ dotsCard.innerHTML += '<div class="dot' + (i < idx ? " filled" : "") + '"></div>';
+ }
+ app.appendChild(dotsCard);
+
+ var q = queue[idx];
+ var card = document.createElement("div");
+ card.className = "card";
+ card.innerHTML =
+ '<div class="sentence-box">' + q.sentence + '</div>' +
+ '<input type="text" id="rzInput" placeholder="Wpisz brakujące litery">' +
+ '<button class="big" id="checkBtn">Sprawdź</button>' +
+ '<div id="feedbackArea"></div>';
+ app.appendChild(card);
+
+ document.getElementById("checkBtn").onclick = function() {
+ var val = document.getElementById("rzInput").value.trim().toLowerCase();
+ var isCorrect = val.length > 0 && val === q.answer.toLowerCase();
+ if (isCorrect) { correctCount++; }
+ document.getElementById("checkBtn").disabled = true;
+ document.getElementById("rzInput").disabled = true;
+ var fb = document.getElementById("feedbackArea");
+ fb.innerHTML =
+ '<div class="feedback ' + (isCorrect ? "ok" : "bad") + '">' + (isCorrect ? "Super! Dobrze! 🎉" : "Prawie! Poprawna odpowiedź: " + q.answer) + '</div>' +
+ '<div class="hint-box">💡 ' + q.hint + '</div>';
+ var nextBtn = document.createElement("button");
+ nextBtn.className = "big";
+ nextBtn.style.marginTop = "10px";
+ nextBtn.textContent = "Dalej →";
+ nextBtn.onclick = function() { idx++; draw(); };
+ fb.appendChild(nextBtn);
+ };
+ }
+ draw();
+}
+
+document.addEventListener("keydown", function(e) {
+ if (e.key !== "Enter") return;
+ var input = document.getElementById("rzInput");
+ if (!input) return;
+ var checkBtn = document.getElementById("checkBtn");
+ if (checkBtn && !checkBtn.disabled) { checkBtn.click(); return; }
+ var buttons = document.querySelectorAll("button.big");
+ for (var i = 0; i < buttons.length; i++) {
+ if (buttons[i].textContent.indexOf("Dalej") !== -1) { buttons[i].click(); return; }
+ }
+});
+
+if (getName()) { render(renderHome); } else { render(renderWelcome); }
+</script>
+</body>
+</html>
