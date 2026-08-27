@@ -5,6 +5,15 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>OliwkaLab</title>
+<script type="module">
+import { createAvatar } from "https://esm.sh/@dicebear/core@9";
+import { adventurer } from "https://esm.sh/@dicebear/collection@9";
+window.generateAvatarSvg = function(seed) {
+ return createAvatar(adventurer, { seed: seed, size: 200 }).toString();
+};
+window.dicebearReady = true;
+if (window.onDicebearReady) window.onDicebearReady();
+</script>
 <style>
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 body { font-family: -apple-system, Segoe UI, Roboto, Arial, sans-serif; background: linear-gradient(180deg, #FFE8B5, #FFD6E8); margin: 0; padding: 0; color: #3A2E5C; min-height: 100vh; }
@@ -19,16 +28,19 @@ input[type=text]:focus { outline: none; border-color: #B36BFF; }
 button.big { background: linear-gradient(135deg, #FF9E7D, #B36BFF); color: white; border: none; border-radius: 16px; padding: 16px 24px; font-size: 17px; font-weight: 700; cursor: pointer; width: 100%; box-shadow: 0 4px 0 #9548d6; transition: transform 0.1s; }
 button.big:active { transform: translateY(3px); box-shadow: 0 1px 0 #9548d6; }
 button.ghost { background: white; color: #B36BFF; border: 2px solid #B36BFF; box-shadow: none; }
-.avatar-box { text-align: center; font-size: 90px; margin: 10px 0; }
+.avatar-wrap { position: relative; width: 200px; height: 200px; margin: 10px auto; }
+.avatar-wrap img, .avatar-wrap svg { width: 200px; height: 200px; }
+.equip-icon { position: absolute; font-size: 34px; filter: drop-shadow(0 2px 3px rgba(0,0,0,0.3)); }
+.equip-hat { top: -18px; left: 50%; transform: translateX(-50%); }
+.equip-weapon { bottom: -6px; left: -14px; }
+.equip-shield { bottom: -6px; right: -14px; }
 .crystals-badge { display: inline-flex; align-items: center; gap: 6px; background: #FFF3D6; color: #C9820B; padding: 8px 16px; border-radius: 20px; font-weight: 700; font-size: 15px; }
 .subject-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 .subject-btn { background: white; border: 3px solid #FFD6E8; border-radius: 18px; padding: 20px 10px; text-align: center; cursor: pointer; font-weight: 700; color: #3A2E5C; transition: transform 0.15s, border-color 0.15s; }
 .subject-btn:hover { transform: translateY(-3px); border-color: #B36BFF; }
 .subject-btn.disabled { opacity: 0.4; cursor: not-allowed; }
-.subject-btn.disabled:hover { transform: none; }
 .subject-icon { font-size: 40px; display: block; margin-bottom: 8px; }
 .topic-btn { display: block; width: 100%; background: #FFF6EE; border: 2px solid #FFD6E8; border-radius: 14px; padding: 16px; margin-bottom: 10px; text-align: left; cursor: pointer; font-size: 15px; font-weight: 600; color: #3A2E5C; }
-.topic-btn:hover { border-color: #B36BFF; }
 .back-link { background: none; border: none; color: #B36BFF; font-weight: 700; font-size: 15px; cursor: pointer; margin-bottom: 12px; padding: 0; }
 .sentence-box { font-size: 20px; text-align: center; margin: 20px 0; line-height: 1.6; }
 .hint-box { background: #E8F7EE; border-radius: 12px; padding: 12px; font-size: 13px; color: #2E7D4F; margin-top: 10px; }
@@ -39,8 +51,19 @@ button.ghost { background: white; color: #B36BFF; border: 2px solid #B36BFF; box
 .dot { width: 10px; height: 10px; border-radius: 50%; background: #FFD6E8; }
 .dot.filled { background: #B36BFF; }
 .result-emoji { font-size: 60px; text-align: center; margin: 10px 0; }
+.stat-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.stat-label { width: 90px; font-size: 13px; font-weight: 700; }
+.stat-bar-bg { flex: 1; background: #FFE8D6; border-radius: 8px; height: 14px; overflow: hidden; }
+.stat-bar-fill { height: 100%; background: linear-gradient(90deg, #FF9E7D, #B36BFF); }
+.stat-val { width: 30px; text-align: right; font-size: 12px; color: #888; }
+.wardrobe-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.wardrobe-item { background: #FFF6EE; border: 3px solid #FFD6E8; border-radius: 14px; padding: 12px 4px; text-align: center; font-size: 30px; cursor: pointer; position: relative; }
+.wardrobe-item.equipped { border-color: #B36BFF; background: #F3E6FF; }
+.wardrobe-item.locked { opacity: 0.3; cursor: not-allowed; }
+.wardrobe-item small { display: block; font-size: 9px; color: #888; margin-top: 4px; }
 @media (max-width: 480px) {
  .subject-grid { grid-template-columns: 1fr; }
+ .wardrobe-grid { grid-template-columns: repeat(3, 1fr); }
  header h1 { font-size: 19px; }
 }
 </style>
@@ -52,7 +75,10 @@ button.ghost { background: white; color: #B36BFF; border: 2px solid #B36BFF; box
 <script>
 var NAME_KEY = "oliwkalab_name";
 var CRYSTALS_KEY = "oliwkalab_crystals";
-var PROGRESS_KEY = "oliwkalab_progress";
+var STATS_KEY = "oliwkalab_stats";
+var AVATAR_SEED_KEY = "oliwkalab_avatar_seed";
+var UNLOCKED_KEY = "oliwkalab_unlocked";
+var EQUIPPED_KEY = "oliwkalab_equipped";
 
 var RZ_ZASADY = [
 {"id":1,"sentence":"Przed oknem rośnie duże d___ewo.","answer":"rz","hint":"drzewo - drzewa (rz po spółgłosce d)"},
@@ -67,17 +93,56 @@ var RZ_ZASADY = [
 {"id":10,"sentence":"Na polu pasą się cztery k___owy.","answer":"r","hint":"krowy - krowa (kontrolne, nie rz/ż)"}
 ];
 
+var WARDROBE_ITEMS = [
+ { id: "korona", name: "Złota korona", icon: "👑", slot: "hat", unlockAt: 0 },
+ { id: "czapka_kowboj", name: "Czapka kowboja", icon: "🤠", slot: "hat", unlockAt: 20 },
+ { id: "hełm_smoka", name: "Hełm smoka", icon: "🐉", slot: "hat", unlockAt: 60 },
+ { id: "miecz", name: "Świetlisty miecz", icon: "🗡", slot: "weapon", unlockAt: 10 },
+ { id: "krowi_placek", name: "Krowi placek (broń!)", icon: "💩", slot: "weapon", unlockAt: 30 },
+ { id: "różdżka", name: "Magiczna różdżka", icon: "🪄", slot: "weapon", unlockAt: 80 },
+ { id: "tarcza", name: "Tarcza obrońcy", icon: "🛡", slot: "shield", unlockAt: 15 },
+ { id: "parasol", name: "Śmieszny parasol", icon: "☂", slot: "shield", unlockAt: 40 },
+ { id: "patelnia", name: "Patelnia bojowa", icon: "🍳", slot: "shield", unlockAt: 70 }
+];
+
 function getName() { return localStorage.getItem(NAME_KEY) || ""; }
 function setName(n) { localStorage.setItem(NAME_KEY, n); }
 function getCrystals() { return parseInt(localStorage.getItem(CRYSTALS_KEY) || "0", 10); }
-function addCrystals(n) { localStorage.setItem(CRYSTALS_KEY, String(getCrystals() + n)); }
+function addCrystals(n) { localStorage.setItem(CRYSTALS_KEY, String(getCrystals() + n)); checkUnlocks(); }
 
-function getAvatarStage() {
- var c = getCrystals();
- if (c >= 100) return "🦸";
- if (c >= 50) return "🧙";
- if (c >= 20) return "🥷";
- return "🧒";
+function getStats() {
+ var raw = localStorage.getItem(STATS_KEY);
+ return raw ? JSON.parse(raw) : { sila: 0, umysl: 0, cialo: 0, atak: 0, obrona: 0 };
+}
+function addStat(name, n) {
+ var s = getStats();
+ s[name] = (s[name] || 0) + n;
+ localStorage.setItem(STATS_KEY, JSON.stringify(s));
+}
+
+function getAvatarSeed() { return localStorage.getItem(AVATAR_SEED_KEY) || ""; }
+function setAvatarSeed(seed) { localStorage.setItem(AVATAR_SEED_KEY, seed); }
+
+function getUnlocked() {
+ var raw = localStorage.getItem(UNLOCKED_KEY);
+ return raw ? JSON.parse(raw) : [];
+}
+function setUnlocked(arr) { localStorage.setItem(UNLOCKED_KEY, JSON.stringify(arr)); }
+function getEquipped() {
+ var raw = localStorage.getItem(EQUIPPED_KEY);
+ return raw ? JSON.parse(raw) : {};
+}
+function setEquipped(obj) { localStorage.setItem(EQUIPPED_KEY, JSON.stringify(obj)); }
+
+function checkUnlocks() {
+ var crystals = getCrystals();
+ var unlocked = getUnlocked();
+ WARDROBE_ITEMS.forEach(function(item) {
+ if (crystals >= item.unlockAt && unlocked.indexOf(item.id) === -1) {
+ unlocked.push(item.id);
+ }
+ });
+ setUnlocked(unlocked);
 }
 
 var app = document.getElementById("app");
@@ -93,11 +158,31 @@ function crystalsBadge() {
  return '<div class="crystals-badge">💎 ' + getCrystals() + ' Iskier Wiedzy</div>';
 }
 
+function drawAvatar(container) {
+ if (window.dicebearReady) {
+ container.innerHTML = window.generateAvatarSvg(getAvatarSeed() || getName() || "start");
+ } else {
+ container.innerHTML = "🧒";
+ window.onDicebearReady = function() { drawAvatar(container); };
+ }
+}
+
+function equipOverlayHtml() {
+ var equipped = getEquipped();
+ var html = "";
+ WARDROBE_ITEMS.forEach(function(item) {
+ if (equipped[item.slot] === item.id) {
+ var cls = item.slot === "hat" ? "equip-hat" : (item.slot === "weapon" ? "equip-weapon" : "equip-shield");
+ html += '<div class="equip-icon ' + cls + '">' + item.icon + '</div>';
+ }
+ });
+ return html;
+}
+
 function renderWelcome() {
  var card = document.createElement("div");
  card.className = "card";
  card.innerHTML =
- '<div class="avatar-box">🧒</div>' +
  '<h2 style="text-align:center;">Witaj, Odkrywco!</h2>' +
  '<p style="text-align:center;color:#666;">Jak masz na imię?</p>' +
  '<input type="text" id="nameInput" placeholder="Wpisz swoje imię">' +
@@ -107,6 +192,27 @@ function renderWelcome() {
  var val = document.getElementById("nameInput").value.trim();
  if (!val) { return; }
  setName(val);
+ setAvatarSeed(val + Date.now());
+ render(renderAvatarPicker);
+ };
+}
+
+function renderAvatarPicker() {
+ var card = document.createElement("div");
+ card.className = "card";
+ card.innerHTML =
+ '<h2 style="text-align:center;">Wybierz swój wygląd!</h2>' +
+ '<div class="avatar-wrap" id="avatarWrap"></div>' +
+ '<button class="big ghost" id="rerollBtn" style="margin-bottom:10px;">🎲 Inny wygląd</button>' +
+ '<button class="big" id="confirmAvatarBtn">To jestem ja! ✅</button>';
+ app.appendChild(card);
+ var wrap = document.getElementById("avatarWrap");
+ drawAvatar(wrap);
+ document.getElementById("rerollBtn").onclick = function() {
+ setAvatarSeed(getName() + Math.random());
+ drawAvatar(wrap);
+ };
+ document.getElementById("confirmAvatarBtn").onclick = function() {
  render(renderHome);
  };
 }
@@ -117,10 +223,13 @@ function renderHome() {
  card.className = "card";
  card.innerHTML =
  '<div style="text-align:center;">' + crystalsBadge() + '</div>' +
- '<div class="avatar-box">' + getAvatarStage() + '</div>' +
+ '<div class="avatar-wrap" id="avatarWrap">' + equipOverlayHtml() + '</div>' +
  '<h2 style="text-align:center;">Cześć, ' + name + '!</h2>' +
- '<p style="text-align:center;color:#666;">Wybierz przedmiot i rusz na quest!</p>';
+ '<button class="big ghost" id="charBtn">🎽 Mój bohater</button>';
  app.appendChild(card);
+ drawAvatar(document.getElementById("avatarWrap"));
+ document.getElementById("avatarWrap").innerHTML += equipOverlayHtml();
+ document.getElementById("charBtn").onclick = function() { render(renderCharacter); };
 
  var subjCard = document.createElement("div");
  subjCard.className = "card";
@@ -140,6 +249,82 @@ function renderHome() {
  b.innerHTML = '<span class="subject-icon">' + s.icon + '</span>' + s.name + (s.active ? "" : "<br><small>(wkrótce)</small>");
  if (s.active) { b.onclick = function() { render(renderPolski); }; }
  grid.appendChild(b);
+ });
+}
+
+function renderCharacter() {
+ var back = document.createElement("button");
+ back.className = "back-link";
+ back.textContent = "← Powrót";
+ back.onclick = function() { render(renderHome); };
+ app.appendChild(back);
+
+ var card = document.createElement("div");
+ card.className = "card";
+ card.innerHTML =
+ '<div style="text-align:center;">' + crystalsBadge() + '</div>' +
+ '<div class="avatar-wrap" id="avatarWrap2"></div>';
+ app.appendChild(card);
+ drawAvatar(document.getElementById("avatarWrap2"));
+ document.getElementById("avatarWrap2").innerHTML += equipOverlayHtml();
+
+ var stats = getStats();
+ var statsCard = document.createElement("div");
+ statsCard.className = "card";
+ var statDefs = [
+ { key: "sila", label: "Siła", icon: "💪" },
+ { key: "umysl", label: "Umysł", icon: "🧠" },
+ { key: "cialo", label: "Ciało", icon: "🏃" },
+ { key: "atak", label: "Atak", icon: "⚔" },
+ { key: "obrona", label: "Obrona", icon: "🛡" }
+ ];
+ var html = "<h3 style='margin-top:0;'>Statystyki</h3>";
+ statDefs.forEach(function(sd) {
+ var val = stats[sd.key] || 0;
+ var pct = Math.min(100, val);
+ html += '<div class="stat-row"><span class="stat-label">' + sd.icon + ' ' + sd.label + '</span><div class="stat-bar-bg"><div class="stat-bar-fill" style="width:' + pct + '%"></div></div><span class="stat-val">' + val + '</span></div>';
+ });
+ statsCard.innerHTML = html;
+ app.appendChild(statsCard);
+
+ var wardrobeBtn = document.createElement("button");
+ wardrobeBtn.className = "big";
+ wardrobeBtn.textContent = "👗 Otwórz szafę";
+ wardrobeBtn.onclick = function() { render(renderWardrobe); };
+ app.appendChild(wardrobeBtn);
+}
+
+function renderWardrobe() {
+ var back = document.createElement("button");
+ back.className = "back-link";
+ back.textContent = "← Powrót";
+ back.onclick = function() { render(renderCharacter); };
+ app.appendChild(back);
+
+ var card = document.createElement("div");
+ card.className = "card";
+ card.innerHTML = '<h2 style="text-align:center;">Twoja szafa</h2><div class="wardrobe-grid" id="wardrobeGrid"></div>';
+ app.appendChild(card);
+
+ var grid = document.getElementById("wardrobeGrid");
+ var unlocked = getUnlocked();
+ var equipped = getEquipped();
+ WARDROBE_ITEMS.forEach(function(item) {
+ var isUnlocked = unlocked.indexOf(item.id) !== -1;
+ var isEquipped = equipped[item.slot] === item.id;
+ var div = document.createElement("div");
+ div.className = "wardrobe-item" + (isEquipped ? " equipped" : "") + (isUnlocked ? "" : " locked");
+ div.innerHTML = item.icon + "<small>" + (isUnlocked ? item.name : "💎 " + item.unlockAt) + "</small>";
+ if (isUnlocked) {
+ div.onclick = function() {
+ var eq = getEquipped();
+ if (eq[item.slot] === item.id) { delete eq[item.slot]; }
+ else { eq[item.slot] = item.id; }
+ setEquipped(eq);
+ render(renderWardrobe);
+ };
+ }
+ grid.appendChild(div);
  });
 }
 
@@ -190,6 +375,7 @@ function startRzZExercise() {
  if (idx >= queue.length) {
  var earned = correctCount * 5;
  addCrystals(earned);
+ addStat("umysl", correctCount);
  var doneCard = document.createElement("div");
  doneCard.className = "card";
  doneCard.innerHTML =
@@ -197,6 +383,7 @@ function startRzZExercise() {
  '<h2 style="text-align:center;">Quest ukończony!</h2>' +
  '<p style="text-align:center;">Poprawne odpowiedzi: ' + correctCount + ' / ' + queue.length + '</p>' +
  '<p style="text-align:center;font-weight:700;color:#C9820B;">Zdobyto ' + earned + ' Iskier Wiedzy! 💎</p>' +
+ '<p style="text-align:center;font-size:13px;color:#888;">+' + correctCount + ' do Umysłu 🧠</p>' +
  '<button class="big" id="finishBtn">Powrót do menu</button>';
  app.appendChild(doneCard);
  document.getElementById("finishBtn").onclick = function() { render(renderPolski); };
@@ -253,7 +440,8 @@ document.addEventListener("keydown", function(e) {
  }
 });
 
-if (getName()) { render(renderHome); } else { render(renderWelcome); }
+checkUnlocks();
+if (getName() && getAvatarSeed()) { render(renderHome); } else { render(renderWelcome); }
 </script>
 </body>
 </html>
