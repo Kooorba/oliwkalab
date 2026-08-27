@@ -31,9 +31,7 @@ button.ghost { background: white; color: #B36BFF; border: 2px solid #B36BFF; box
 .avatar-wrap { position: relative; width: 200px; height: 200px; margin: 10px auto; }
 .avatar-wrap img, .avatar-wrap svg { width: 200px; height: 200px; }
 .equip-icon { position: absolute; font-size: 34px; filter: drop-shadow(0 2px 3px rgba(0,0,0,0.3)); }
-.equip-hat { top: -18px; left: 50%; transform: translateX(-50%); }
-.equip-weapon { bottom: -6px; left: -14px; }
-.equip-shield { bottom: -6px; right: -14px; }
+
 .crystals-badge { display: inline-flex; align-items: center; gap: 6px; background: #FFF3D6; color: #C9820B; padding: 8px 16px; border-radius: 20px; font-weight: 700; font-size: 15px; }
 .subject-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 .subject-btn { background: white; border: 3px solid #FFD6E8; border-radius: 18px; padding: 20px 10px; text-align: center; cursor: pointer; font-weight: 700; color: #3A2E5C; transition: transform 0.15s, border-color 0.15s; }
@@ -158,26 +156,51 @@ function crystalsBadge() {
  return '<div class="crystals-badge">💎 ' + getCrystals() + ' Iskier Wiedzy</div>';
 }
 
-function drawAvatar(container) {
- if (window.dicebearReady) {
- container.innerHTML = window.generateAvatarSvg(getAvatarSeed() || getName() || "start");
- } else {
- container.innerHTML = "🧒";
- window.onDicebearReady = function() { drawAvatar(container); };
- }
+
+var POSE_ANCHORS = {
+ idle:  { headTop: "8px",  headLeft: "50%", handRight: "18px", handBottom: "55px" },
+ think: { headTop: "14px", headLeft: "46%", handRight: "22px", handBottom: "60px" },
+ cheer: { headTop: "2px",  headLeft: "50%", handRight: "5px",  handBottom: "35px" }
+};
+
+function getCurrentMood() {
+ var lastActivity = localStorage.getItem("oliwkalab_last_activity");
+ if (!lastActivity) return "idle";
+ var days = Math.floor((Date.now() - new Date(lastActivity).getTime()) / (1000*60*60*24));
+ if (days >= 2) return "think";
+ return "idle";
 }
 
-function equipOverlayHtml() {
+function drawAvatar(container, moodOverride) {
+ var mood = moodOverride || getCurrentMood();
+ var fileMap = { idle: "character_femaleAdventurer_idle.png", think: "character_femaleAdventurer_think.png", cheer: "character_femaleAdventurer_cheer1.png" };
+ container.innerHTML = '<img src="' + fileMap[mood] + '" style="width:100%;height:100%;object-fit:contain;">';
+ container.setAttribute("data-mood", mood);
+}
+
+function markActivityToday() {
+ localStorage.setItem("oliwkalab_last_activity", new Date().toISOString());
+}
+
+
+
+function equipOverlayHtml(mood) {
+ var anchors = POSE_ANCHORS[mood || "idle"];
  var equipped = getEquipped();
  var html = "";
  WARDROBE_ITEMS.forEach(function(item) {
- if (equipped[item.slot] === item.id) {
- var cls = item.slot === "hat" ? "equip-hat" : (item.slot === "weapon" ? "equip-weapon" : "equip-shield");
- html += '<div class="equip-icon ' + cls + '">' + item.icon + '</div>';
+ if (equipped[item.slot] !== item.id) return;
+ var style = "";
+ if (item.slot === "hat") {
+ style = "top:" + anchors.headTop + ";left:" + anchors.headLeft + ";transform:translateX(-50%);";
+ } else {
+ style = "bottom:" + anchors.handBottom + ";right:" + anchors.handRight + ";";
  }
+ html += '<div class="equip-icon" style="' + style + '">' + item.icon + '</div>';
  });
  return html;
 }
+
 
 function renderWelcome() {
  var card = document.createElement("div");
@@ -223,12 +246,17 @@ function renderHome() {
  card.className = "card";
  card.innerHTML =
  '<div style="text-align:center;">' + crystalsBadge() + '</div>' +
- '<div class="avatar-wrap" id="avatarWrap">' + equipOverlayHtml() + '</div>' +
+
+ '<div class="avatar-wrap" id="avatarWrap"></div>' +
+
  '<h2 style="text-align:center;">Cześć, ' + name + '!</h2>' +
  '<button class="big ghost" id="charBtn">🎽 Mój bohater</button>';
  app.appendChild(card);
- drawAvatar(document.getElementById("avatarWrap"));
- document.getElementById("avatarWrap").innerHTML += equipOverlayHtml();
+
+ var wrapEl = document.getElementById("avatarWrap");
+ drawAvatar(wrapEl);
+ wrapEl.innerHTML += equipOverlayHtml(wrapEl.getAttribute("data-mood"));
+
  document.getElementById("charBtn").onclick = function() { render(renderCharacter); };
 
  var subjCard = document.createElement("div");
@@ -374,8 +402,11 @@ function startRzZExercise() {
 
  if (idx >= queue.length) {
  var earned = correctCount * 5;
+
  addCrystals(earned);
  addStat("umysl", correctCount);
+ markActivityToday();
+
  var doneCard = document.createElement("div");
  doneCard.className = "card";
  doneCard.innerHTML =
